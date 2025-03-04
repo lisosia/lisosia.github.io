@@ -1,16 +1,189 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>lisosia</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- <script src="script.js"></script> -->
-  </head>
-  <body>
-    <div id="wrapper">
-      <div class="center">
-	<div class="coffee">☕</div>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Convolution Calculation Tool</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .panel {
+      border: 1px solid #ccc;
+      padding: 20px;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    .input-group {
+      margin-bottom: 10px;
+    }
+    label {
+      display: inline-block;
+      width: 120px;
+    }
+    input {
+      width: 60px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #aaa;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Convolution Calculation Tool</h1>
+  <div class="container">
+    <!-- Input Panel -->
+    <div class="panel" id="inputPanel">
+      <h2>Input</h2>
+      <div class="input-group">
+        <label for="inH">inH:</label>
+        <input type="number" id="inH" value="224">
+      </div>
+      <div class="input-group">
+        <label for="inW">inW:</label>
+        <input type="number" id="inW" value="224">
+      </div>
+      <div class="input-group">
+        <label for="inC">inC:</label>
+        <input type="number" id="inC" value="3">
+      </div>
+      <div class="input-group">
+        <label>kernel:</label>
+        <input type="number" id="KernelH" value="3"> x 
+        <input type="number" id="KernelW" value="3">
+      </div>
+      <div class="input-group">
+        <label for="Stride">Stride:</label>
+        <input type="number" id="Stride" value="2">
+      </div>
+      <div class="input-group">
+        <label for="outC">outC:</label>
+        <input type="number" id="outC" value="32">
+      </div>
+      <div class="input-group">
+        <label for="NumGroup">NumGroup:</label>
+        <input type="number" id="NumGroup" value="1">
       </div>
     </div>
-  </body>
+
+    <!-- Result Panel -->
+    <div class="panel" id="resultPanel">
+      <h2>Result</h2>
+      <table id="resultTable">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Value</th>
+            <th>Formula</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- 結果はここに挿入される -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // 数値をカンマ区切りにするヘルパー関数
+    function formatNumber(num) {
+      return num.toLocaleString();
+    }
+
+    // 入力項目の取得
+    const inputs = {
+      inH: document.getElementById("inH"),
+      inW: document.getElementById("inW"),
+      inC: document.getElementById("inC"),
+      KernelH: document.getElementById("KernelH"),
+      KernelW: document.getElementById("KernelW"),
+      Stride: document.getElementById("Stride"),
+      outC: document.getElementById("outC"),
+      NumGroup: document.getElementById("NumGroup")
+    };
+    const resultTableBody = document.querySelector("#resultTable tbody");
+
+    // 計算処理
+    function calculate() {
+      // 入力値取得と型変換
+      const inH = parseInt(inputs.inH.value);
+      const inW = parseInt(inputs.inW.value);
+      const inC = parseInt(inputs.inC.value);
+      const kernelH = parseInt(inputs.KernelH.value);
+      const kernelW = parseInt(inputs.KernelW.value);
+      const stride = parseInt(inputs.Stride.value);
+      const outC = parseInt(inputs.outC.value);
+      const NumGroup = parseInt(inputs.NumGroup.value);
+
+      // 出力サイズ計算 (same padding 想定)
+      const outH = Math.ceil(inH / stride);
+      const outW = Math.ceil(inW / stride);
+
+      // Weight数の計算
+      const weightCount = outC * (inC / NumGroup) * kernelH * kernelW;
+
+      // MAC数の計算
+      const MACs = outH * outW * outC * (inC / NumGroup) * kernelH * kernelW;
+
+      // FLOPS = MACs * 2
+      const FLOPS = MACs * 2;
+
+      // 結果をテーブルに出力
+      resultTableBody.innerHTML = "";
+      
+      // Output shape(HWC)
+      const rowOutputSize = document.createElement("tr");
+      rowOutputSize.innerHTML = `<td>Output shape(HWC)</td>
+        <td>${outH} x ${outW} x ${outC}</td>
+        <td>ceil(inH/Stride) x ceil(inW/Stride) x outC</td>`;
+      resultTableBody.appendChild(rowOutputSize);
+
+      // Weight count
+      const rowWeight = document.createElement("tr");
+      rowWeight.innerHTML = `<td>Weight count</td>
+        <td>${formatNumber(weightCount)}</td>
+        <td>outC * (inC / NumGroup) * kernelH * kernelW</td>`;
+      resultTableBody.appendChild(rowWeight);
+
+      // MACs
+      const rowMACs = document.createElement("tr");
+      rowMACs.innerHTML = `<td>MACs</td>
+        <td>${formatNumber(MACs)}</td>
+        <td>outH * outW * outC * (inC / NumGroup) * kernelH * kernelW</td>`;
+      resultTableBody.appendChild(rowMACs);
+
+      // FLOPs
+      const rowFLOPS = document.createElement("tr");
+      rowFLOPS.innerHTML = `<td>FLOPs</td>
+        <td>${formatNumber(FLOPS)}</td>
+        <td>MACs * 2</td>`;
+      resultTableBody.appendChild(rowFLOPS);
+    }
+
+    // 入力変更時に再計算
+    Object.values(inputs).forEach(input => {
+      input.addEventListener("input", calculate);
+    });
+
+    // 初期計算
+    calculate();
+  </script>
+</body>
 </html>
